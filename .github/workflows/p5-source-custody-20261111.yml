@@ -1,0 +1,56 @@
+name: P5 Official HTTP Source Evidence (branch-isolated)
+on:
+  push:
+    branches:
+      - p5-custody-20261111
+    paths:
+      - '.github/workflows/p5-source-custody-20261111.yml'
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Capture actual public official HTTPS response entity bytes
+        shell: bash
+        run: |
+          set -u
+          mkdir -p p5_source
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > p5_source/run_start_utc.txt
+          echo 'issue=26301' > p5_source/metadata.txt
+          echo 'cutoff=2026-11-11T13:00:00Z' >> p5_source/metadata.txt
+          echo "github_run_id=$GITHUB_RUN_ID" >> p5_source/metadata.txt
+          echo "github_sha=$GITHUB_SHA" >> p5_source/metadata.txt
+          for id in prior_detail history_api history_www; do
+            case "$id" in
+              prior_detail) url='https://api.js-lottery.com/cms/post-148227.html' ;;
+              history_api) url='https://api.js-lottery.com/wfzq/p3p5/p5data' ;;
+              history_www) url='https://www.js-lottery.com/wfzq/p3p5/p5data' ;;
+            esac
+            printf '%s\n' "$url" > "p5_source/$id.url"
+            curl --proto '=https' --tlsv1.2 --http1.1 --raw --no-compressed --fail --location --silent --show-error --connect-timeout 12 --max-time 25 --retry 1 --retry-delay 1 --dump-header "p5_source/$id.headers" --output "p5_source/$id.body.bin" "$url"
+            rc=$?
+            printf '%s\n' "$rc" > "p5_source/$id.curl_exit"
+            if [ -f "p5_source/$id.body.bin" ]; then sha256sum "p5_source/$id.body.bin"; fi
+          done
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > p5_source/run_end_utc.txt
+          python3 - <<'PY'
+          import pathlib,json,hashlib,datetime,os
+          p=pathlib.Path('p5_source')
+          data={'schema':'P5_ACTUAL_PUBLIC_HTTPS_RESPONSE_ENTITY_CAPTURE_V1','issue':'26301','github_run_id':os.getenv('GITHUB_RUN_ID'),'github_sha':os.getenv('GITHUB_SHA'),'runner_start_utc':(p/'run_start_utc.txt').read_text().strip(),'runner_end_utc':(p/'run_end_utc.txt').read_text().strip(),'endpoint_results':{},'no_private_p5_code_uploaded':True,'status':'RAW_ENTITY_CAPTURE_PROBE'}
+          for id in ['prior_detail','history_api','history_www']:
+            b=p/f'{id}.body.bin';h=p/f'{id}.headers'
+            data['endpoint_results'][id]={'url':(p/f'{id}.url').read_text().strip(),'curl_exit':(p/f'{id}.curl_exit').read_text().strip(),'body_available':b.is_file() and b.stat().st_size>0,'body_bytes':b.stat().st_size if b.exists() else 0,'body_sha256':hashlib.sha256(b.read_bytes()).hexdigest() if b.exists() else None,'headers_sha256':hashlib.sha256(h.read_bytes()).hexdigest() if h.exists() else None}
+          data['status']='RAW_ENTITY_CAPTURED' if any(x['body_available'] and x['curl_exit']=='0' for x in data['endpoint_results'].values()) else 'FAILED_NO_RAW_HTTP'
+          (p/'manifest.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(data,ensure_ascii=False))
+          PY
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-26301-public-http-source-evidence
+          path: p5_source/
+          retention-days: 3
+          if-no-files-found: warn
