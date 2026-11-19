@@ -53,55 +53,122 @@
 </div>
 <script>
   const CIRC = 553;
-  let total = 25*60, left = total, timer = null, sessions = 0, isBreak = false;
-  const timeEl = document.getElementById('time'),
-        modeEl = document.getElementById('mode'),
-        progEl = document.getElementById('prog'),
-        toggleBtn = document.getElementById('toggle'),
-        countEl = document.getElementById('count');
+  let totalMs = 25 * 60_000;
+  let remainingMs = totalMs;
+  let timer = null;
+  let deadlineMs = null;
+  let sessions = 0;
+  let isBreak = false;
 
-  function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-  function render(){
-    timeEl.textContent = fmt(left);
-    progEl.style.strokeDashoffset = CIRC * (1 - left/total);
+  const timeEl = document.getElementById('time');
+  const modeEl = document.getElementById('mode');
+  const progEl = document.getElementById('prog');
+  const toggleBtn = document.getElementById('toggle');
+  const countEl = document.getElementById('count');
+
+  function fmt(ms) {
+    const seconds = Math.ceil(Math.max(0, ms) / 1000);
+    return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' +
+      String(seconds % 60).padStart(2, '0');
   }
-  function beep(){
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 880; g.gain.value = .15;
-    o.start(); o.stop(ctx.currentTime + .4);
+
+  function render() {
+    timeEl.textContent = fmt(remainingMs);
+    progEl.style.strokeDashoffset = CIRC * (1 - remainingMs / totalMs);
   }
-  function tick(){
-    if(left > 0){ left--; render(); }
-    else{
-      clearInterval(timer); timer = null; toggleBtn.textContent = 'Start'; beep();
-      if(!isBreak){ sessions++; countEl.textContent = 'Sessions completed: '+sessions;
-        modeEl.textContent = sessions % 4 === 0 ? 'Nice streak — take a long break!' : 'Focus done! Take a break.'; }
-      else modeEl.textContent = 'Break over — back to focus!';
+
+  function stopClock() {
+    if (timer !== null) clearInterval(timer);
+    timer = null;
+    deadlineMs = null;
+  }
+
+  function beep() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.frequency.value = 880;
+      gain.gain.value = .15;
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + .4);
+      oscillator.onended = () => { void ctx.close(); };
+    } catch {
+      // Audio is optional; a blocked audio context must not interrupt timing.
     }
   }
+
+  function finish() {
+    if (timer === null) return;
+    stopClock();
+    remainingMs = 0;
+    render();
+    toggleBtn.textContent = 'Start';
+    beep();
+    if (!isBreak) {
+      sessions += 1;
+      countEl.textContent = 'Sessions completed: ' + sessions;
+      modeEl.textContent = sessions % 4 === 0
+        ? 'Nice streak — take a long break!'
+        : 'Focus done! Take a break.';
+    } else {
+      modeEl.textContent = 'Break over — back to focus!';
+    }
+  }
+
+  function tick() {
+    if (timer === null || deadlineMs === null) return;
+    remainingMs = Math.max(0, deadlineMs - Date.now());
+    render();
+    if (remainingMs === 0) finish();
+  }
+
   toggleBtn.onclick = () => {
-    if(timer){ clearInterval(timer); timer = null; toggleBtn.textContent = 'Resume'; }
-    else{ timer = setInterval(tick, 1000); toggleBtn.textContent = 'Pause';
-          modeEl.textContent = isBreak ? 'On break…' : 'Focusing… stay with it.'; }
+    if (timer !== null) {
+      tick();
+      if (timer !== null) {
+        stopClock();
+        toggleBtn.textContent = 'Resume';
+        modeEl.textContent = isBreak ? 'Break paused' : 'Focus paused';
+      }
+      return;
+    }
+
+    if (remainingMs <= 0) remainingMs = totalMs;
+    deadlineMs = Date.now() + remainingMs;
+    timer = setInterval(tick, 250);
+    toggleBtn.textContent = 'Pause';
+    modeEl.textContent = isBreak ? 'On break…' : 'Focusing… stay with it.';
+    render();
   };
+
   document.getElementById('reset').onclick = () => {
-    clearInterval(timer); timer = null; left = total; toggleBtn.textContent = 'Start'; render();
+    stopClock();
+    remainingMs = totalMs;
+    toggleBtn.textContent = 'Start';
+    modeEl.textContent = isBreak ? 'Break mode' : 'Focus mode';
+    render();
   };
-  document.querySelectorAll('.tabs button').forEach(b => {
-    b.onclick = () => {
-      document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      clearInterval(timer); timer = null;
-      const m = +b.dataset.min; total = left = m*60;
-      isBreak = m !== 25;
+
+  document.querySelectorAll('.tabs button').forEach(button => {
+    button.onclick = () => {
+      document.querySelectorAll('.tabs button').forEach(tab => tab.classList.remove('active'));
+      button.classList.add('active');
+      stopClock();
+      const minutes = Number(button.dataset.min);
+      totalMs = remainingMs = minutes * 60_000;
+      isBreak = minutes !== 25;
       progEl.style.stroke = isBreak ? 'var(--break)' : 'var(--accent)';
       toggleBtn.textContent = 'Start';
       modeEl.textContent = isBreak ? 'Break mode' : 'Focus mode';
       render();
     };
   });
+
   render();
 </script>
 </body>
