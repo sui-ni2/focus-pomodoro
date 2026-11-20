@@ -9,8 +9,8 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
          min-height:100vh; display:flex; align-items:center; justify-content:center; }
-  .card { background:var(--card); border-radius:20px; padding:40px 48px; text-align:center;
-          box-shadow:0 12px 48px rgba(0,0,0,.45); width:340px; }
+  .card { background:var(--card); border-radius:20px; padding:40px 24px; text-align:center;
+          box-shadow:0 12px 48px rgba(0,0,0,.45); width:min(340px, calc(100vw - 24px)); }
   h1 { font-size:15px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
   #mode { font-size:14px; color:var(--muted); margin-bottom:18px; min-height:20px; }
   #ring { width:200px; height:200px; margin:0 auto 18px; position:relative; }
@@ -22,8 +22,9 @@
            background:var(--accent); color:#10131a; font-weight:600; }
   button.secondary { background:#2c313e; color:var(--text); }
   button:hover { filter:brightness(1.1); }
+  button:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
   .tabs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
-  .tabs button { background:#2c313e; color:var(--muted); font-size:13px; padding:8px 14px; }
+  .tabs button { background:#2c313e; color:var(--text); font-size:13px; padding:8px 14px; }
   .tabs button.active { background:var(--accent); color:#10131a; }
   #count { font-size:13px; color:var(--muted); }
 </style>
@@ -31,19 +32,19 @@
 <body>
 <div class="card">
   <h1>Focus</h1>
-  <div id="mode">Pick a mode to begin</div>
+  <div id="mode" role="status" aria-live="polite" aria-atomic="true">Focus mode — press Start to begin</div>
   <div id="ring">
-    <svg width="200" height="200">
+    <svg width="200" height="200" aria-hidden="true" focusable="false">
       <circle cx="100" cy="100" r="88" fill="none" stroke="#2c313e" stroke-width="12"/>
       <circle id="prog" cx="100" cy="100" r="88" fill="none" stroke="var(--accent)"
               stroke-width="12" stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="0"/>
     </svg>
-    <div id="time">25:00</div>
+    <div id="time" role="timer" aria-label="Time remaining">25:00</div>
   </div>
-  <div class="tabs">
-    <button data-min="25" class="active">Focus 25</button>
-    <button data-min="5">Break 5</button>
-    <button data-min="15">Long 15</button>
+  <div class="tabs" role="group" aria-label="Timer duration">
+    <button data-min="25" class="active" aria-pressed="true">Focus 25</button>
+    <button data-min="5" aria-pressed="false">Break 5</button>
+    <button data-min="15" aria-pressed="false">Long 15</button>
   </div>
   <div class="btns">
     <button id="toggle">Start</button>
@@ -156,8 +157,12 @@
 
   document.querySelectorAll('.tabs button').forEach(button => {
     button.onclick = () => {
-      document.querySelectorAll('.tabs button').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tabs button').forEach(tab => {
+        tab.classList.remove('active');
+        tab.setAttribute('aria-pressed', 'false');
+      });
       button.classList.add('active');
+      button.setAttribute('aria-pressed', 'true');
       stopClock();
       const minutes = Number(button.dataset.min);
       totalMs = remainingMs = minutes * 60_000;
