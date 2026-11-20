@@ -118,6 +118,9 @@ test("timer status and duration selection are accessible without distracting ann
   assert.match(html, /data-min="5"[^>]*aria-pressed="false"/);
   assert.match(html, /button:focus-visible/);
   assert.match(html, /width:min\(340px, calc\(100vw - 24px\)\)/);
+  assert.match(html, /flex-wrap:wrap/);
+  assert.match(html, /viewBox="0 0 200 200"/);
+  assert.match(html, /width:min\(200px, 100%\)/);
 
   const app = harness();
   app.switchTo(5);
