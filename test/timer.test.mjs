@@ -19,6 +19,8 @@ function harness() {
   const tabs = [25, 5, 15].map(minutes => ({
     dataset: { min: String(minutes) },
     classList: { add() {}, remove() {} },
+    attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
     onclick: null,
   }));
   const document = {
@@ -106,4 +108,23 @@ test("reset or mode switch cancels previous timer", () => {
   app.switchTo(25);
   assert.equal(app.activeTimers, 0);
   assert.equal(app.elements.time.textContent, "25:00");
+});
+
+test("timer status and duration selection are accessible without distracting announcements", () => {
+  assert.match(html, /id="mode" role="status" aria-live="polite"/);
+  assert.match(html, /id="time" role="timer"/);
+  assert.match(html, /<svg[^>]*aria-hidden="true"/);
+  assert.match(html, /data-min="25"[^>]*aria-pressed="true"/);
+  assert.match(html, /data-min="5"[^>]*aria-pressed="false"/);
+  assert.match(html, /button:focus-visible/);
+  assert.match(html, /width:min\(340px, calc\(100vw - 24px\)\)/);
+
+  const app = harness();
+  app.switchTo(5);
+  assert.deepEqual(app.tabs.map(t => t.attributes["aria-pressed"]), ["false", "true", "false"]);
+  app.switchTo(25);
+  assert.deepEqual(app.tabs.map(t => t.attributes["aria-pressed"]), ["true", "false", "false"]);
+  app.click("toggle");
+  app.advance(1_500_000);
+  assert.equal(app.elements.mode.textContent, "Focus done! Take a break.");
 });
