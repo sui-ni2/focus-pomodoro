@@ -13,17 +13,17 @@
           box-shadow:0 12px 48px rgba(0,0,0,.45); width:min(340px, calc(100vw - 24px)); }
   h1 { font-size:15px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
   #mode { font-size:14px; color:var(--muted); margin-bottom:18px; min-height:20px; }
-  #ring { width:200px; height:200px; margin:0 auto 18px; position:relative; }
-  #ring svg { transform:rotate(-90deg); }
+  #ring { width:min(200px, 100%); aspect-ratio:1; margin:0 auto 18px; position:relative; }
+  #ring svg { width:100%; height:100%; transform:rotate(-90deg); }
   #time { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
           font-size:44px; font-weight:600; font-variant-numeric:tabular-nums; }
-  .btns { display:flex; gap:10px; justify-content:center; margin-bottom:18px; }
+  .btns { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:18px; }
   button { border:none; border-radius:10px; padding:10px 20px; font-size:15px; cursor:pointer;
            background:var(--accent); color:#10131a; font-weight:600; }
   button.secondary { background:#2c313e; color:var(--text); }
   button:hover { filter:brightness(1.1); }
   button:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
-  .tabs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:20px; }
   .tabs button { background:#2c313e; color:var(--text); font-size:13px; padding:8px 14px; }
   .tabs button.active { background:var(--accent); color:#10131a; }
   #count { font-size:13px; color:var(--muted); }
@@ -34,7 +34,7 @@
   <h1>Focus</h1>
   <div id="mode" role="status" aria-live="polite" aria-atomic="true">Focus mode — press Start to begin</div>
   <div id="ring">
-    <svg width="200" height="200" aria-hidden="true" focusable="false">
+    <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
       <circle cx="100" cy="100" r="88" fill="none" stroke="#2c313e" stroke-width="12"/>
       <circle id="prog" cx="100" cy="100" r="88" fill="none" stroke="var(--accent)"
               stroke-width="12" stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="0"/>
