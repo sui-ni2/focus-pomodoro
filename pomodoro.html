@@ -148,6 +148,7 @@
   };
 
   document.getElementById('reset').onclick = () => {
+    tick(); // Reconcile any elapsed session before cancelling a delayed callback.
     stopClock();
     remainingMs = totalMs;
     toggleBtn.textContent = 'Start';
@@ -157,6 +158,7 @@
 
   document.querySelectorAll('.tabs button').forEach(button => {
     button.onclick = () => {
+      tick(); // Reconcile completion before replacing the active mode.
       document.querySelectorAll('.tabs button').forEach(tab => {
         tab.classList.remove('active');
         tab.setAttribute('aria-pressed', 'false');

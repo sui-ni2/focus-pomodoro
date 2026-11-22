@@ -48,6 +48,7 @@ function harness() {
       now += ms;
       for (const callback of [...timers.values()]) callback();
     },
+    elapseWithoutCallback(ms) { now += ms; },
     get activeTimers() { return timers.size; },
   };
 }
@@ -130,4 +131,41 @@ test("timer status and duration selection are accessible without distracting ann
   app.click("toggle");
   app.advance(1_500_000);
   assert.equal(app.elements.mode.textContent, "Focus done! Take a break.");
+});
+
+test("overdue focus is counted when Reset is clicked before a throttled callback", () => {
+  const app = harness();
+  app.click("toggle");
+  app.elapseWithoutCallback(25 * 60_000 + 1);
+  app.click("reset");
+  assert.equal(app.elements.count.textContent, "Sessions completed: 1");
+  assert.equal(app.elements.time.textContent, "25:00");
+  assert.equal(app.activeTimers, 0);
+  app.advance(1_000);
+  assert.equal(app.elements.count.textContent, "Sessions completed: 1");
+});
+
+test("overdue focus is counted when switching modes before a throttled callback", () => {
+  const app = harness();
+  app.click("toggle");
+  app.elapseWithoutCallback(25 * 60_000 + 1);
+  app.switchTo(5);
+  assert.equal(app.elements.count.textContent, "Sessions completed: 1");
+  assert.equal(app.elements.time.textContent, "05:00");
+  assert.equal(app.activeTimers, 0);
+  app.click("toggle");
+  app.advance(300_000);
+  assert.equal(app.elements.count.textContent, "Sessions completed: 1");
+});
+
+test("Reset and mode switching before deadline still cancel, without credit", () => {
+  for (const action of ["reset", "switch"]) {
+    const app = harness();
+    app.click("toggle");
+    app.elapseWithoutCallback(25 * 60_000 - 1);
+    if (action === "reset") app.click("reset");
+    else app.switchTo(5);
+    assert.equal(app.elements.count.textContent, "");
+    assert.equal(app.activeTimers, 0);
+  }
 });
